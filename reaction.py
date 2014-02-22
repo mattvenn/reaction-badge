@@ -9,6 +9,7 @@ import csv
 import driver
 
 csv_file = 'scores.csv'
+fade_time = 0.5
 
 #undefine for testing with GPIO lib
 raspi = True
@@ -64,23 +65,31 @@ def read_file():
         #return empty array if the file doesn't exist
         return []
 
-def blink(times=1):
+def blink(times=1,length=0.3):
     driver.update('0')
     for i in range(times):
         driver.turn_on()
-        time.sleep(0.3)
+        time.sleep(length)
         driver.turn_off()
-        time.sleep(0.3)
-    
+        time.sleep(length)
+
 if __name__ == '__main__':
+    print("starting...")
+    #first time init for raspi
+    if raspi:
+        driver = driver.driver()
+        driver.update('0')
+        driver.fade(0,100,fade_time)
+        driver.fade(100,0,fade_time)
+        driver.fade(0,100,fade_time)
+        driver.fade(100,0,fade_time)
+
     while True:
-        if raspi:
-            blink(2)
         #wait for button to start game
         wait_button()
         if raspi:
-            blink(1)
-        print("starting...")
+            driver.update('0')
+            driver.fade(100,0,2*fade_time)
 
         #get a random time to wait
         random_wait = random.randint(3,10)
@@ -116,13 +125,21 @@ if __name__ == '__main__':
         save_score(reaction_time)
 
         if raspi:
-            blink()
-            driver.turn_on()
-            driver.update(short_time,True)
-            driver.turn_off()
+            blink(3,0.1)
             time.sleep(1)
-            driver.turn_on()
-            driver.update(str(pos),True)
+
+            driver.update(short_time[0])
+            driver.fade(0,100,fade_time)
+            time.sleep(0.5)
+            driver.update(short_time[1:],True)
+            driver.fade(100,0,fade_time)
+
+            pos_str = str(pos)
+            driver.update(pos_str[0],True)
+            driver.fade(0,100,fade_time)
+            time.sleep(0.5)
+            driver.update(pos_str[1:],True)
+            driver.fade(100,0,fade_time)
 
         print("you got", short_time)
         print("you came", pos)
