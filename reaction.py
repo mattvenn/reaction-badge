@@ -11,23 +11,25 @@ import driver
 csv_file = 'scores.csv'
 
 #undefine for testing with GPIO lib
-raspi = False
-
-#interrupt does nothing
-def gpio_callback(gpio_id, val):
-    pass
+raspi = True
 
 if raspi:
     import RPi.GPIO as GPIO
+
+#interrupt does nothing
+def callback(channel):
+    pass
+
+if raspi:
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BOARD)
     button = 18
-    RPIO.add_interrupt_callback(button, gpio_callback, pull_up_down=RPIO.PUD_UP)
+    GPIO.setup(button,GPIO.IN,pull_up_down=GPIO.PUD_UP)
 
 def wait_button():
     if raspi:
         #wait for interrupt
-        RPIO.wait_for_interrupts()
+        GPIO.wait_for_edge(button,GPIO.FALLING)
     else:
         #wait for key press
         raw_input("press enter key")
@@ -62,14 +64,23 @@ def read_file():
         #return empty array if the file doesn't exist
         return []
 
-
-if __name__ == '__main__':
-    if raspi:
+def blink(times=1):
+    driver.update('0')
+    for i in range(times):
         driver.turn_on()
-
+        time.sleep(0.3)
+        driver.turn_off()
+        time.sleep(0.3)
+    
+if __name__ == '__main__':
     while True:
+        if raspi:
+            blink(2)
         #wait for button to start game
         wait_button()
+        if raspi:
+            blink(1)
+        print("starting...")
 
         #get a random time to wait
         random_wait = random.randint(3,10)
@@ -78,18 +89,23 @@ if __name__ == '__main__':
         for i in range(random_wait):
             time.sleep(1)
             if raspi:
-                driver.update(str(i))
+                #driver.update(str(i))
+                driver.turn_off()
+                driver.update('0')
             print(".")
 
         #go!
         if raspi:
-            driver.update('0')
+            driver.turn_on()
 
         print("go!")
         start_time = time.time()
 
         #wait for button
         wait_button()
+        
+        if raspi:
+            driver.turn_off()
 
         #work out reaction time and get position in high scores
         reaction_time = time.time() - start_time
@@ -100,8 +116,13 @@ if __name__ == '__main__':
         save_score(reaction_time)
 
         if raspi:
+            blink()
+            driver.turn_on()
             driver.update(short_time,True)
-            driver.update(pos,True)
+            driver.turn_off()
+            time.sleep(1)
+            driver.turn_on()
+            driver.update(str(pos),True)
 
         print("you got", short_time)
         print("you came", pos)
