@@ -6,6 +6,7 @@ license: GPL attribution share alike
 import time
 import random
 import csv
+import driver
 
 csv_file = 'scores.csv'
 
@@ -63,6 +64,9 @@ def read_file():
 
 
 if __name__ == '__main__':
+    if raspi:
+        driver.turn_on()
+
     while True:
         #wait for button to start game
         wait_button()
@@ -74,15 +78,14 @@ if __name__ == '__main__':
         for i in range(random_wait):
             time.sleep(1)
             if raspi:
-                pass
-            else:
-                print(".")
+                driver.update(str(i))
+            print(".")
 
         #go!
         if raspi:
-            pass
-        else:
-            print("go!")
+            driver.update('0')
+
+        print("go!")
         start_time = time.time()
 
         #wait for button
@@ -97,7 +100,8 @@ if __name__ == '__main__':
         save_score(reaction_time)
 
         if raspi:
-            pass
-        else:
-            print("you got", short_time)
-            print("you came", pos)
+            driver.update(short_time,True)
+            driver.update(pos,True)
+
+        print("you got", short_time)
+        print("you came", pos)
