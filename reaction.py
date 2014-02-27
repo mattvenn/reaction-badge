@@ -101,7 +101,11 @@ def fade_num(string,delay_func=time.sleep):
             # hack for now
             char = ' .'
         driver.update(char)
-        delay_func(1.3)
+        driver.set_pwm(max_bright)
+        delay_func(1.1)
+        #little pause
+        driver.turn_off()
+        delay_func(0.2)
     driver.fade(max_bright,0,fade_time)
 
 
