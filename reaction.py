@@ -11,7 +11,7 @@ import threading
 csv_file = 'scores.csv'
 fade_time = 1.0
 max_top_scores = 3
-max_bright = 30
+max_bright = 50
 high_score_sleep = 30 #show high score every 30s
 
 #undefine for testing with GPIO lib
@@ -49,8 +49,10 @@ def save_score(score):
 
 def get_top_score():
     data = read_file()
-    data.sort(key=lambda x: x[1])
-    return data[0][1]
+    if len(data):
+        data.sort(key=lambda x: x[1])
+        return data[0][1]
+    return 0
 
 #find position in table
 def get_pos(score):
@@ -85,14 +87,21 @@ def show_highscores(stop_event):
         #equivalent to time.sleep()
         print(short_time)
         if raspi:
-            fade_num(short_time)
+            fade_num(short_time,stop_event.wait)
         stop_event.wait(high_score_sleep)
 
-def fade_num(string):
+#allow passing of a delay func so can be done in high score thread
+#and avoid delay after button press
+def fade_num(string,delay_func=time.sleep):
     driver.update(string[0])
     driver.fade(0,max_bright,fade_time)
-    time.sleep(0.5)
-    driver.update(string[1:],True)
+    delay_func(0.5)
+    for char in string[1:]:
+        if char == '.':
+            # hack for now
+            char = ' .'
+        driver.update(char)
+        delay_func(1.3)
     driver.fade(max_bright,0,fade_time)
 
 
@@ -103,7 +112,7 @@ if __name__ == '__main__':
         #first time init for raspi
         if raspi:
             driver = driver.driver()
-            driver.update('0')
+            driver.update('P')
             driver.fade(0,max_bright,fade_time)
             driver.fade(max_bright,0,fade_time)
             driver.fade(0,max_bright,fade_time)
@@ -136,10 +145,6 @@ if __name__ == '__main__':
             #wait it
             for i in range(random_wait):
                 time.sleep(1)
-                if raspi:
-                    #driver.update(str(i))
-                    driver.turn_off()
-                    driver.update('0')
                 print(".")
 
             #go!
