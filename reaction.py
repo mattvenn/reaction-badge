@@ -7,6 +7,7 @@ import time
 import random
 import csv
 import threading
+import os
 
 csv_file = 'scores.csv'
 fade_time = 1.0
@@ -34,10 +35,15 @@ if raspi:
 def wait_button():
     if raspi:
         #wait for interrupt
+        print("wait for button down")
         GPIO.wait_for_edge(button,GPIO.FALLING)
+        time_start = time.time()
+        GPIO.wait_for_edge(button,GPIO.RISING)
+        return time.time() - time_start
     else:
         #wait for key press
         raw_input("press enter key")
+        return 0
 
 #write the score
 def save_score(score):
@@ -78,7 +84,7 @@ def read_file():
 #thread for showing high scores
 def show_highscores(stop_event):
     top_score = get_top_score()
-    short_time = '%.4f' % float(top_score)
+    short_time = '%.3f' % float(top_score)
 
     #wait before showing score
     stop_event.wait(5)
@@ -90,6 +96,13 @@ def show_highscores(stop_event):
             fade_num(short_time,stop_event.wait)
         stop_event.wait(high_score_sleep)
 
+def shutdown():
+    print("shutting down")
+    os.system("halt")
+    exit(1)
+
+
+        
 #allow passing of a delay func so can be done in high score thread
 #and avoid delay after button press
 def fade_num(string,delay_func=time.sleep):
@@ -100,12 +113,14 @@ def fade_num(string,delay_func=time.sleep):
         if char == '.':
             # hack for now
             char = ' .'
-        driver.update(char)
-        driver.set_pwm(max_bright)
-        delay_func(1.1)
+        
         #little pause
         driver.turn_off()
         delay_func(0.2)
+
+        driver.update(char)
+        driver.set_pwm(max_bright)
+        delay_func(1.1)
     driver.fade(max_bright,0,fade_time)
 
 
@@ -131,14 +146,17 @@ if __name__ == '__main__':
 
             #wait for button to start game
             try:
-                wait_button()
+                l = wait_button()
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
+            #start shutdown thread
             t_stop.set()
 
             print("waiting for thread to end")
             t.join()
             print("done")
+            if l > 5:
+                shutdown()
             if raspi:
                 driver.update('0')
                 driver.fade(max_bright,0,2*fade_time)
@@ -160,24 +178,30 @@ if __name__ == '__main__':
 
             #wait for button
             wait_button()
+            reaction_time = time.time() - start_time
             
             if raspi:
                 driver.turn_off()
 
             #work out reaction time and get position in high scores
-            reaction_time = time.time() - start_time
-            short_time = '%.4f' % reaction_time
-            pos = get_pos(reaction_time)
+            if reaction_time < 0.1:
+                # something went wrong!
+                print("something went wrong")
+                if raspi:
+                    fade_num('000')
+            else:
+                short_time = '%.3f' % reaction_time
+                pos = get_pos(reaction_time)
 
-            #save high score
-            save_score(reaction_time)
+                #save high score
+                save_score(reaction_time)
 
-            print("you got", short_time)
-            print("you came", pos)
-            if raspi:
-                fade_num(short_time)
-                time.sleep(0.5)
-                fade_num(str(pos))
+                print("you got", short_time)
+                print("you came", pos)
+                if raspi:
+                    fade_num(short_time)
+                    time.sleep(0.5)
+                    fade_num(str(pos))
 
     except KeyboardInterrupt:
         print("stopping")
